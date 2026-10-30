@@ -1,0 +1,400 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  USER
+  RESELLER
+  ADMIN
+}
+
+enum TransactionType {
+  DEPOSIT
+  ORDER_PAYMENT
+  ORDER_REFUND
+  MANUAL_ADJUST
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  MANUAL_REVIEW
+}
+
+enum DepositStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING_BOT_REVIEW
+  AUTO_VERIFIED
+  MANUAL_REVIEW
+  REJECTED
+}
+
+model User {
+  id              String           @id @default(uuid())
+  numericId       Int              @unique @default(autoincrement())
+  email           String           @unique
+  passwordHash    String?
+  name            String
+  username        String?          @unique
+  image           String?
+  role            Role             @default(USER)
+  phone           String?          @unique
+  phoneNumber     String?
+  countryCode     String?
+  countryName     String?
+  preferredCurrency String?        @default("USD")
+  referralCode    String?
+  authProvider    String           @default("EMAIL")
+  isActive        Boolean          @default(true)
+  isVerified      Boolean          @default(false)
+  kycStatus       KycStatus        @default(NOT_SUBMITTED)
+  isFrozen        Boolean          @default(false)
+  rootCommissionRate    Float      @default(10.0)
+  totalVolumeHandled    Float      @default(0.0)
+  adminEarnings         Float      @default(0.0)
+  rootEarningsFromAdmin Float      @default(0.0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  wallet          Wallet?
+  transactions    Transaction[]
+  orders          Order[]
+  depositRequests DepositRequest[]
+  kyc             KycVerification?
+
+  @@map("users")
+}
+
+model Wallet {
+  id           String        @id @default(uuid())
+  userId       String        @unique
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance      Decimal       @default(0.0000) @db.Decimal(12, 4)
+  currency     String        @default("USD")
+  isFrozen     Boolean       @default(false)
+  version      Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  transactions Transaction[]
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id               String          @id @default(uuid())
+  walletId         String
+  wallet           Wallet          @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type             TransactionType
+  amount           Decimal         @db.Decimal(12, 4)
+  balanceBefore    Decimal         @db.Decimal(12, 4)
+  balanceAfter     Decimal         @db.Decimal(12, 4)
+  orderId          String?
+  depositRequestId String?
+  description      String
+  reference        String          @unique
+  costPrice        Decimal?        @default(0.0000) @db.Decimal(12, 4)
+  sellingPrice     Decimal?        @default(0.0000) @db.Decimal(12, 4)
+  grossProfit      Decimal?        @default(0.0000) @db.Decimal(12, 4)
+  processedByAdminId String?
+  rootCutAmount    Decimal?        @default(0.0000) @db.Decimal(12, 4)
+  adminCutAmount   Decimal?        @default(0.0000) @db.Decimal(12, 4)
+  createdAt        DateTime        @default(now())
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+model Category {
+  id          String    @id @default(uuid())
+  name        String
+  slug        String    @unique
+  icon        String
+  description String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products    Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id                  String     @id @default(uuid())
+  categoryId          String
+  category            Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  name                String
+  nameAr              String?
+  nameEn              String?
+  slug                String     @unique
+  image               String
+  imageUrl            String?
+  iconUrl             String?
+  bannerUrl           String?
+  description         String?
+  unitType            String?    @default("Coins")
+  unitPriceUser       Decimal?   @default(0.001) @db.Decimal(12, 4)
+  unitPriceReseller   Decimal?   @default(0.0009) @db.Decimal(12, 4)
+  requiresUid         Boolean    @default(true)
+  uidLabel            String?    @default("معرف اللاعب")
+  requiresPlayerId    Boolean    @default(true)
+  playerValidationUrl String?
+  validationApiUrl    String?
+  gameCode            String?
+  sortOrder           Int        @default(0)
+  isActive            Boolean    @default(true)
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+
+  packages            Package[]
+  orders              Order[]
+
+  @@index([categoryId])
+  @@map("products")
+}
+
+model Package {
+  id                 String   @id @default(uuid())
+  productId          String
+  product            Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name               String
+  sku                String   @unique
+  priceUser          Decimal  @db.Decimal(12, 4)
+  priceReseller      Decimal  @db.Decimal(12, 4)
+  costPrice          Decimal  @db.Decimal(12, 4)
+  foreignProviderCode String?
+  inStock            Boolean  @default(true)
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  orders             Order[]
+
+  @@index([productId])
+  @@map("packages")
+}
+
+model ApiProvider {
+  id                     String   @id @default(uuid())
+  name                   String
+  code                   String   @unique
+  baseUrl                String
+  apiKey                 String
+  apiSecret              String
+  webhookSecret          String
+  balanceAlertThreshold  Decimal  @default(100.0000) @db.Decimal(12, 4)
+  currentBalance         Decimal  @default(0.0000) @db.Decimal(12, 4)
+  isActive               Boolean  @default(true)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("api_providers")
+}
+
+model Order {
+  id                 String      @id @default(uuid())
+  orderNumber        String      @unique
+  userId             String
+  user               User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId          String
+  product            Product     @relation(fields: [productId], references: [id])
+  packageId          String
+  package            Package     @relation(fields: [packageId], references: [id])
+  targetId           String
+  targetZoneId       String?
+  playerNickname     String?
+  unitPrice          Decimal     @db.Decimal(12, 4)
+  amount             Decimal     @db.Decimal(12, 4)
+  status             OrderStatus @default(PENDING)
+  idempotencyKey     String      @unique
+  providerId         String?
+  providerTxId       String?
+  providerRawResponse Json?
+  errorMessage       String?
+  retryCount         Int         @default(0)
+  costPrice          Decimal?    @default(0.0000) @db.Decimal(12, 4)
+  sellingPrice       Decimal?    @default(0.0000) @db.Decimal(12, 4)
+  grossProfit        Decimal?    @default(0.0000) @db.Decimal(12, 4)
+  processedByAdminId String?
+  rootCutAmount      Decimal?    @default(0.0000) @db.Decimal(12, 4)
+  adminCutAmount     Decimal?    @default(0.0000) @db.Decimal(12, 4)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model DepositRequest {
+  id                   String        @id @default(uuid())
+  depositNumber        String        @unique
+  userId               String
+  user                 User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount               Decimal       @db.Decimal(12, 4)
+  currency             String        @default("USD")
+  method               String
+  senderName           String?
+  senderAccountOrPhone String?
+  transferReference    String?
+  receiptImageUrl      String
+  status               DepositStatus @default(PENDING)
+  adminNote            String?
+  approvedByUserId     String?
+  approvedAt           DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@map("deposit_requests")
+}
+
+model AdminUser {
+  id                    String   @id @default(uuid())
+  email                 String   @unique
+  passwordHash          String
+  fullName              String
+  role                  String   // "SUPER_ADMIN", "AGENT", "FINANCE"
+  agentCode             String?  @unique // كود الوكيل
+  rootCommissionRate    Float    @default(10.0)
+  totalVolumeHandled    Float    @default(0.0)
+  adminEarnings         Float    @default(0.0)
+  rootEarningsFromAdmin Float    @default(0.0)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+
+  @@map("admin_users")
+}
+
+// الحسابات البنكية والآيبانات
+model BankAccount {
+  id            String   @id @default(uuid())
+  bankName      String   // e.g. "Ziraat Bankası", "VakıfBank", "بنك البركة"
+  accountHolder String   // اسم المستفيد
+  iban          String   // TRXXXXXXXXXXXXXXXXXXXXXXXX
+  currency      String   @default("TRY") // TRY, USD, SYP
+  minDeposit    Decimal  @default(10.0) @db.Decimal(10, 2)
+  notes         String?  // تعليمات الإيداع (مثلاً: كتابة رقم الهاتف في الوصف)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("bank_accounts")
+}
+
+// قنوات المحافظ والحوالات المحلية والـ USDT
+model PaymentChannel {
+  id            String   @id @default(uuid())
+  type          String   // "SYRIATEL_CASH", "AL_HARAM", "USDT_TRC20", "USDT_BEP20"
+  title         String   // الاسم المعروض (مثلاً: سيريتل كاش - الخط المالي)
+  accountNumber String   // رقم المحفظة أو عنوان المحفظة الرقمية
+  recipientName String?  // اسم المستلم (للحوالات)
+  qrCodeUrl     String?  // رابط صورة الـ QR
+  instructions  String?  // كود التفعيل مثل *3040#
+  isActive      Boolean  @default(true)
+  updatedAt     DateTime @updatedAt
+
+  @@map("payment_channels")
+}
+
+// الوكلاء المعتمدين والموزعين
+model Agent {
+  id            String   @id @default(uuid())
+  name          String   // اسم المكتب أو الوكيل
+  agentCode     String   @unique // كود الوكيل (e.g. AGENT-IST-01)
+  country       String
+  city          String   // المحافظة / المدينة
+  address       String?
+  phone         String
+  whatsapp      String
+  telegram      String?
+  discountRate  Decimal  @default(0.0) @db.Decimal(5, 2) // نسبة الخصم
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  @@map("agents")
+}
+
+// المشرفين وصلاحيات الإدارة
+model StaffUser {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  fullName      String
+  passwordHash  String
+  role          String   // "ROOT_ADMIN", "FINANCE_OFFICER", "SUPPORT_AGENT"
+  permissions   String[] // ["MANAGE_DEPOSITS", "MANAGE_ORDERS", "MANAGE_PRICES"]
+  status        String   @default("ACTIVE") // "ACTIVE", "PENDING_APPROVAL", "SUSPENDED"
+  createdAt     DateTime @default(now())
+
+  @@map("staff_users")
+}
+
+// أسعار العملات وتطبيقات الدردشة
+model PlatformRate {
+  id            String   @id @default(uuid())
+  key           String   @unique // e.g. "USD_TRY", "USD_SYP", "SOULSTAR_USER", "SOULSTAR_AGENT", "SOULCHILL_USER", "SOULCHILL_AGENT"
+  name          String   // e.g. "سعر الدولار مقابل الليرة التركية"
+  rate          Decimal  @db.Decimal(12, 4)
+  category      String   // "CURRENCY", "APP_RATE"
+  updatedAt     DateTime @updatedAt
+
+  @@map("platform_rates")
+}
+
+// توثيق الهويات والتحقق الآلي KYC
+model KycVerification {
+  id             String     @id @default(uuid())
+  userId         String     @unique
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  idCardFrontUrl String
+  idCardBackUrl  String?
+  selfieUrl      String?
+  idNumber       String?    // الرقم الوطني / رقم الهوية
+  extractedName  String?    // الاسم المستخرج عبر OCR
+  matchScore     Decimal?   @db.Decimal(5, 2) // نسبة التطابق
+  status         KycStatus  @default(PENDING_BOT_REVIEW)
+  botNotes       String?
+  reviewedBy     String?    // Root/Admin ID if manual
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@map("kyc_verifications")
+}
+
+// الوكلاء المعتمدون وشبكة التوزيع
+model Agent {
+  id          String   @id @default(cuid())
+  name        String   // Agent / Store Name (e.g. "وكالة الأمل - دمشق")
+  city        String   // City / Region (e.g. "دمشق", "حلب", "إسطنبول")
+  address     String?  // Detailed address
+  phone       String   // Phone / WhatsApp number
+  whatsappUrl String?  // Direct WhatsApp click-to-chat link
+  image       String?  // Avatar or storefront photo
+  isActive    Boolean  @default(true) // Visible on public /agents if true
+  orderIndex  Int      @default(0)    // For display sorting
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("agents")
+}

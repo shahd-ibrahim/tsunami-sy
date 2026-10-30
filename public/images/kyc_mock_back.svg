@@ -1,0 +1,30 @@
+<svg xmlns='http://www.w3.org/2000/svg' width='600' height='380' viewBox='0 0 600 380'>
+  <defs>
+    <linearGradient id='cardBgBack' x1='0%' y1='0%' x2='100%' y2='100%'>
+      <stop offset='0%' stop-color='#0f2027'/>
+      <stop offset='50%' stop-color='#203a43'/>
+      <stop offset='100%' stop-color='#2c5364'/>
+    </linearGradient>
+  </defs>
+  <rect width='600' height='380' rx='20' fill='url(#cardBgBack)' stroke='#06b6d4' stroke-width='2'/>
+  <rect x='15' y='15' width='570' height='350' rx='14' fill='none' stroke='rgba(6,182,212,0.2)' stroke-width='1' stroke-dasharray='4,4'/>
+  
+  <text x='560' y='50' fill='#06b6d4' font-family='sans-serif' font-size='16' font-weight='bold' text-anchor='end'>بيانات القيد والعنوان - الجمهورية العربية السورية</text>
+  <line x1='30' y1='70' x2='570' y2='70' stroke='rgba(6,182,212,0.3)' stroke-width='1'/>
+
+  <g font-family='sans-serif' font-size='13' fill='#e2e8f0' text-anchor='end'>
+    <text x='550' y='105' fill='#94a3b8'>القيد والخانة:</text>
+    <text x='550' y='128' font-weight='bold'>دمشق - شاغور جواني / خ 142</text>
+
+    <text x='550' y='165' fill='#94a3b8'>العنوان السكني:</text>
+    <text x='550' y='188' font-weight='bold'>محافظة دمشق - الميدان الفوقاني</text>
+
+    <text x='550' y='225' fill='#94a3b8'>تاريخ الإصدار والانتهاء:</text>
+    <text x='550' y='248' font-weight='bold' font-family='monospace'>2022-01-10 / 2032-01-10</text>
+  </g>
+
+  <!-- MRZ Machine Readable Zone -->
+  <rect x='30' y='280' width='540' height='65' rx='6' fill='#070e17' stroke='rgba(255,255,255,0.1)' stroke-width='1'/>
+  <text x='50' y='308' fill='#94a3b8' font-family='monospace' font-size='15'>I&lt;SYR01040506070&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</text>
+  <text x='50' y='332' fill='#94a3b8' font-family='monospace' font-size='15'>9405142M3201108SYR&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;5KHALED&lt;&lt;</text>
+</svg>
