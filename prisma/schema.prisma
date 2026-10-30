@@ -318,20 +318,24 @@ model PaymentChannel {
   @@map("payment_channels")
 }
 
-// الوكلاء المعتمدين والموزعين
+// الوكلاء المعتمدين والموزعين وشبكة التوزيع
 model Agent {
-  id            String   @id @default(uuid())
-  name          String   // اسم المكتب أو الوكيل
-  agentCode     String   @unique // كود الوكيل (e.g. AGENT-IST-01)
-  country       String
-  city          String   // المحافظة / المدينة
-  address       String?
-  phone         String
-  whatsapp      String
-  telegram      String?
-  discountRate  Decimal  @default(0.0) @db.Decimal(5, 2) // نسبة الخصم
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  id           String   @id @default(cuid())
+  name         String   // اسم المكتب أو الوكيل
+  agentCode    String?  @unique // كود الوكيل (e.g. AGENT-IST-01)
+  country      String?  @default("سوريا")
+  city         String   // المحافظة / المدينة
+  address      String?  // العنوان التفصيلي
+  phone        String   // رقم الهاتف / واتساب
+  whatsapp     String?
+  whatsappUrl  String?  // Direct WhatsApp click-to-chat link
+  telegram     String?
+  image        String?  // Avatar or storefront photo
+  discountRate Decimal  @default(0.0) @db.Decimal(5, 2) // نسبة الخصم
+  isActive     Boolean  @default(true) // Visible on public /agents if true
+  orderIndex   Int      @default(0)    // For display sorting
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@map("agents")
 }
@@ -380,21 +384,4 @@ model KycVerification {
   updatedAt      DateTime   @updatedAt
 
   @@map("kyc_verifications")
-}
-
-// الوكلاء المعتمدون وشبكة التوزيع
-model Agent {
-  id          String   @id @default(cuid())
-  name        String   // Agent / Store Name (e.g. "وكالة الأمل - دمشق")
-  city        String   // City / Region (e.g. "دمشق", "حلب", "إسطنبول")
-  address     String?  // Detailed address
-  phone       String   // Phone / WhatsApp number
-  whatsappUrl String?  // Direct WhatsApp click-to-chat link
-  image       String?  // Avatar or storefront photo
-  isActive    Boolean  @default(true) // Visible on public /agents if true
-  orderIndex  Int      @default(0)    // For display sorting
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("agents")
 }
